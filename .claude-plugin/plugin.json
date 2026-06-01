@@ -6,6 +6,5 @@
   "homepage": "https://github.com/reUrgency/Overton-Snapshot",
   "repository": "https://github.com/reUrgency/Overton-Snapshot",
   "license": "MIT",
-  "keywords": ["context", "compaction", "handoff", "statusline", "snapshot", "claude-code"],
-  "hooks": "./hooks/hooks.json"
+  "keywords": ["context", "compaction", "handoff", "statusline", "snapshot", "claude-code"]
 }
