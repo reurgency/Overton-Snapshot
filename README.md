@@ -24,8 +24,10 @@ You should always be in charge of the timing and shape of your context window co
 | `overton/threshold-nudge.py` (Stop hook) | One nudge per rising 10% band per session once you cross the threshold. |
 | `overton/config.json` | `threshold_pct` (default 75) and `context_window` (`"auto"`). |
 
+<img src="images/status-line-12pct.png" alt="Statusline Meter" width="480">
 <img src="images/status-line-50pct.png" alt="Statusline Meter" width="480">
 <img src="images/status-line-63pct.png" alt="Statusline Meter" width="480">
+<img src="images/status-line-75pct.png" alt="Statusline Meter" width="480">
 
 ---
 
