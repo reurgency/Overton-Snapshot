@@ -14,6 +14,7 @@ scenario: coding|planning|debugging|research|strategy|meeting|creative|multimedi
 title: <short human title>                 # ✱
 project: <repo or cwd basename>            # ✱ (or "none" if not in a project)
 branch: <git branch>                       # omit if not in a git repo
+repo_root: <repo basename>                 # only for --here repo handoffs; signals paths are repo-relative
 session_id: <CLAUDE_SESSION_ID>            # the originating session
 status: in-progress|blocked|complete       # ✱
 focus: <verbatim focus instructions>       # omit if the user gave none

@@ -9,7 +9,8 @@ an over-threshold **nudge** so you know when to snapshot before compaction.
 
 | Component | What it does |
 |-----------|--------------|
-| `/overton-snapshot` command + skill | Generates a snapshot using one of 9 scenario templates (coding, planning, debugging, research, strategy, meeting, creative, multimedia, general). Saved as Markdown + YAML frontmatter to `~/.claude/snapshots/`. |
+| `/overton-snapshot` command + skill | Generates a snapshot using one of 9 scenario templates (coding, planning, debugging, research, strategy, meeting, creative, multimedia, general). Saved as Markdown + YAML frontmatter to `~/.claude/snapshots/`, or into the repo with `--here`. |
+| `/overton-resume [path]` command | Loads a snapshot (newest in `.claude/handoffs/` → `docs/handoffs/` → `~/.claude/snapshots/`, or an explicit path), restates the state + next step, and continues. Convenience only — consuming a snapshot needs no plugin. |
 | `overton/statusline.py` | Statusline showing model · git branch · `ctx NN% ▓▓░ used/window`. Mirrors Claude Code's `/context` (auto-detects 200k vs 1M). Turns red + shows `⚠ /overton-snapshot` over your threshold. |
 | `overton/threshold-nudge.py` (Stop hook) | One nudge per rising 10% band per session once you cross the threshold. |
 | `overton/config.json` | `threshold_pct` (default 75) and `context_window` (`"auto"`). |
@@ -34,6 +35,25 @@ Plugins can't register a status line directly, so add this once to `~/.claude/se
 
 The plugin's `SessionStart` hook keeps `~/.claude/overton-statusline.py` pointed at the current plugin
 version automatically, so this survives updates.
+
+## Handoffs
+
+A snapshot is plain Markdown — **producing** one needs this plugin; **consuming** one does not.
+
+**Same machine, new session** (e.g. moving a session to a fresh window):
+1. `/overton-snapshot` here → note the saved path.
+2. In the new session: `/overton-resume` (picks the newest), or `/overton-resume <path>`, or simply
+   *"Read `<path>` and continue."*
+
+**Hand off to a teammate via the repo:**
+1. `/overton-snapshot --here` — writes into `./.claude/handoffs/` (falls back to `./docs/handoffs/` if
+   `.claude/` is git-ignored) using **repo-relative paths** so links resolve on their machine.
+2. **Review for secrets**, then `git add` + commit + push the handoff file.
+3. Teammate pulls, opens Claude in the repo, and runs `/overton-resume` — or, with no plugin installed,
+   just *"Read `.claude/handoffs/<file>.md` and continue."* Either works.
+
+`/overton-resume` restates the loaded state and the next step, then asks before acting — it won't
+silently start changing things.
 
 ## Configuration
 

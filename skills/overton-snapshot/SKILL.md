@@ -19,11 +19,14 @@ Run this whenever the user invokes `/overton-snapshot`. Work through Steps 0–4
 
 ## Step 0 — Parse arguments
 
-You receive a raw argument string. Split it:
+You receive a raw argument string. Split it into three things:
 
-- **Leading digit 1–9** → that is the **template id**. Everything after the digit is **focus instructions**.
-- **No leading digit** → **auto-detect** the template (Step 1). The entire string (if any) is **focus instructions**.
-- **Empty** → auto-detect template, no focus.
+- **Leading digit 1–9** → the **template id** (no leading digit → auto-detect in Step 1).
+- **A `--here` or `--repo` token** (anywhere) → the **destination is the current repo** (a committed
+  handoff for a teammate or another machine), which also switches path references to **repo-relative**
+  (see Step 4). Absent → the destination is the global archive `~/.claude/snapshots/`.
+- **Everything left over** → **focus instructions**.
+- **Empty** → auto-detect template, global destination, no focus.
 
 **Focus instructions** are a first-class steer from the user — e.g. *"pay particular attention to
 preserving the posting-strategy section"* or *"keep every detail of the repro steps."* They tell you
@@ -72,15 +75,27 @@ Do a quick chronological analysis pass over the conversation, then collect:
 4. Apply the writing techniques from FORMAT.md (verbatim constraints, verbatim next step, clickable
    `path:line`, separate state from action, record dead ends, dense/no-filler).
 5. **Honor the focus instructions**: expand and preserve whatever they name, even beyond the template default.
+6. **Path style depends on destination:**
+   - **Repo handoff (`--here`)** → all `path:line` references MUST be **repo-root-relative**
+     (`src/foo.ts:42`, not `/Users/you/...`), so they resolve on a teammate's machine. Add a
+     `repo_root:` frontmatter field with the repo's basename.
+   - **Global archive (default)** → absolute or repo-relative paths are both fine.
 
 ## Step 4 — Write the file, then print inline
 
 1. Build the frontmatter (FORMAT.md schema). For `created`, use the current date/time from the
    environment context. For `session_id`, use `${CLAUDE_SESSION_ID}`.
-2. Ensure `~/.claude/snapshots/` exists (create it if needed) and write to:
-   `~/.claude/snapshots/YYYY-MM-DD-HHMM-overton-<scenario>-<slug>.md`
-   (`<slug>` = 2–5 kebab-case words from the title).
-3. **Print the full snapshot inline** in your reply, then report the saved file path on the last line.
+2. **Choose the destination directory:**
+   - **Default (global archive):** `~/.claude/snapshots/`.
+   - **`--here` (repo handoff):** resolve the repo root with `git rev-parse --show-toplevel`, then target
+     `<repo-root>/.claude/handoffs/`. **But first check it will actually commit:** run
+     `git check-ignore .claude/handoffs` (or `.claude`). If it's git-ignored, fall back to
+     `<repo-root>/docs/handoffs/` instead and tell the user why (so the handoff isn't silently un-committable).
+     If not in a git repo, warn and fall back to the global archive.
+3. Ensure the chosen directory exists (create it if needed) and write to:
+   `<dir>/YYYY-MM-DD-HHMM-overton-<scenario>-<slug>.md` (`<slug>` = 2–5 kebab-case words from the title).
+4. **Print the full snapshot inline** in your reply, then report the saved file path on the last line.
+   For a `--here` handoff, also remind the user to **review for secrets and `git add` + commit** the file.
 
 ## Quality bar (self-check before finishing)
 
