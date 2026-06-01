@@ -100,18 +100,84 @@ def _tokens(usage):
             + src.get("cache_read_input_tokens", 0))
 
 
+# Approx fixed context loaded before any conversation messages: system prompt +
+# system/MCP tools + custom agents + memory files + skills. Used only for the
+# pre-first-turn estimate (no token usage exists yet). Rough by nature.
+BASELINE_OVERHEAD = 25_000
+
+
+def _estimate_text_tokens(content):
+    """Very rough token estimate (~chars/4) for a message's content, which may be a
+    plain string or a list of content blocks (text / tool_use / tool_result)."""
+    if isinstance(content, str):
+        return len(content) // 4
+    total = 0
+    if isinstance(content, list):
+        for b in content:
+            if not isinstance(b, dict):
+                total += len(str(b)) // 4
+            elif isinstance(b.get("text"), str):
+                total += len(b["text"]) // 4
+            elif b.get("type") == "tool_result":
+                c = b.get("content")
+                total += len(c if isinstance(c, str) else json.dumps(c)) // 4
+            elif b.get("type") == "tool_use":
+                total += len(json.dumps(b.get("input", {}))) // 4
+    return total
+
+
+def _estimate_loaded(transcript_path):
+    """Estimate context that WILL load when no token usage exists yet — i.e. the
+    pre-first-turn window right after a fresh start or a /resume continuation.
+
+    For a compacted/continued session only the content from the last compaction
+    summary onward is replayed, so we count from there; otherwise we count all
+    messages. Plus a baseline for system/tools/memory/skills. Approximate.
+    """
+    try:
+        raw_lines = open(transcript_path, "rb").read().split(b"\n")
+    except Exception:
+        return None
+    records = []
+    for raw in raw_lines:
+        if not raw.strip():
+            continue
+        try:
+            records.append(json.loads(raw))
+        except Exception:
+            continue
+    if not records:
+        return None
+    start = 0  # replay starts at the most recent compaction summary, if any
+    for i, o in enumerate(records):
+        if o.get("isCompactSummary"):
+            start = i
+    tokens = BASELINE_OVERHEAD
+    for o in records[start:]:
+        if o.get("type") in ("user", "assistant"):
+            tokens += _estimate_text_tokens((o.get("message") or {}).get("content"))
+    return tokens
+
+
 def compute(transcript_path):
     """Return a dict describing current context usage.
 
-    Keys: ok (bool), window, threshold_pct, and when ok: used, pct.
+    Keys: ok (bool), window, threshold_pct, and when ok: used, pct, estimated.
+    `estimated` is True when no token usage exists yet (pre-first-turn / fresh
+    resume) and the figure is derived from transcript content instead.
     """
     cfg = _config()
-    usage = _last_usage(transcript_path) if transcript_path else None
-    if not usage:
-        # report the detected window even when usage is unknown
-        return {"ok": False, "window": _window(cfg),
-                "threshold_pct": cfg["threshold_pct"]}
-    used = _tokens(usage)
     window = _window(cfg)
+    usage = _last_usage(transcript_path) if transcript_path else None
+    if usage:
+        used, estimated = _tokens(usage), False
+    elif transcript_path:
+        used = _estimate_loaded(transcript_path)
+        if used is None:
+            return {"ok": False, "window": window, "threshold_pct": cfg["threshold_pct"]}
+        estimated = True
+    else:
+        return {"ok": False, "window": window, "threshold_pct": cfg["threshold_pct"]}
     return {"ok": True, "used": used, "window": window,
-            "pct": round(100 * used / window), "threshold_pct": cfg["threshold_pct"]}
+            "pct": round(100 * used / window),
+            "threshold_pct": cfg["threshold_pct"], "estimated": estimated}

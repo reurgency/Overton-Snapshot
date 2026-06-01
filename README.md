@@ -61,6 +61,11 @@ using the **last `iterations[]` entry** to avoid double-counting multi-pass turn
 matches Claude Code's own `/context` gauge (200k target when `CLAUDE_CODE_DISABLE_1M_CONTEXT` is set,
 else 1M), and values over 100% are shown deliberately — they mean you're over your target window.
 
+Before the first turn writes any usage (a brand-new session, or right after a `/resume`), the figure is
+**estimated** from transcript content — system/tools baseline plus the messages that will replay (from the
+last compaction summary onward for continued sessions) — and shown with a leading `~` (e.g. `ctx ~18%`).
+The exact number replaces the estimate as soon as the first turn completes.
+
 ## License
 
 MIT © reUrgency

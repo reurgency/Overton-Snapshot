@@ -50,7 +50,10 @@ def main():
         filled = max(0, min(10, round(pct / 10)))
         bar = "▓" * filled + "░" * (10 - filled)
         color = RED if pct >= thr else YELLOW if pct >= thr * 0.8 else GREEN
-        seg = f"{color}ctx {pct}% {bar} {round(used/1000)}k/{round(window/1000)}k{RESET}"
+        # "~" marks a pre-first-turn estimate (fresh start or just-resumed session,
+        # before any token usage has been recorded for this session).
+        label = f"ctx ~{pct}%" if info.get("estimated") else f"ctx {pct}%"
+        seg = f"{color}{label} {bar} {round(used/1000)}k/{round(window/1000)}k{RESET}"
         if pct >= thr:
             seg += f" {RED}⚠ /overton-snapshot{RESET}"
         parts.append(seg)
