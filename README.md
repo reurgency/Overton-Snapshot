@@ -40,6 +40,7 @@ You should always be in charge of the timing and shape of your context window co
 
 ### Status line (one-time settings step)
 
+**IMPORTANT:** Only if you want the status line to appear in your Claude interface. 
 Plugins can't register a status line directly, so add this once to `~/.claude/settings.json`:
 
 ```json
@@ -137,6 +138,8 @@ symlinks, so it's safe to re-run.
 ---
 
 ## Why compaction templates?
+
+![Overton Snapshot 2](images/Overton-Snapshot-v0-5x2.png)
 
 We all know how an agent performs better if you give it a specific role, which begins to steer it and  triggers inference to a particular area of its training data. 
 
