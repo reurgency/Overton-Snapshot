@@ -1,6 +1,6 @@
 ---
 description: Resume from an Overton snapshot — load a handoff file and pick up the work where it left off.
-argument-hint: "[path to a snapshot .md | blank = newest handoff in this repo, else newest global snapshot]"
+argument-hint: "[blank = list snapshots to choose from] [path or filename substring to load directly] [latest = newest, no prompt]"
 ---
 
 Resume work from an Overton snapshot. Raw argument: $ARGUMENTS
@@ -8,13 +8,22 @@ Resume work from an Overton snapshot. Raw argument: $ARGUMENTS
 This command is convenience sugar — a snapshot is plain Markdown, so anyone can resume without this
 plugin by just reading the file. Follow these steps:
 
-### 1. Locate the snapshot
-- If `$ARGUMENTS` is a non-empty path → use that file (expand a leading `~`). If it doesn't exist, say so and stop.
-- Otherwise pick the **most recently modified** `*.md`, searching in this order and stopping at the first match:
-  1. `./.claude/handoffs/`
-  2. `./docs/handoffs/`
-  3. `~/.claude/snapshots/`
-  If a repo handoff and a global snapshot both exist, prefer the repo handoff but mention the global one if it's clearly newer. If nothing is found, tell the user and stop.
+### 1. Choose the snapshot
+Build a candidate list of `*.md` from these locations, **newest first across all of them**:
+`./.claude/handoffs/`, `./docs/handoffs/`, `~/.claude/snapshots/` (skip any that don't exist).
+
+Interpret `$ARGUMENTS`:
+- **Looks like a path** (contains `/`, ends in `.md`, or starts with `~`) → load that exact file. If it doesn't exist, say so and stop.
+- **`latest`** → load the single most-recent candidate without asking.
+- **Any other text** → treat it as a **filename substring** and match against candidates: exactly one match → load it; several → show the numbered list (below); none → say so and stop.
+- **Empty** →
+  - **exactly one** candidate → load it (announce which).
+  - **more than one** → **do NOT auto-pick the newest.** Show a numbered list, newest first:
+    `N.  YYYY-MM-DD · <scenario> · <title>   (<location>)`
+    reading `scenario`/`title` from each file's frontmatter. Then **stop and ask** the user to reply
+    with a number (or a path/substring). Load whichever they choose.
+
+Cap the list at the ~10 most recent and note if older ones were omitted. If no candidates exist anywhere, tell the user and stop.
 
 ### 2. Read it fully
 Read the entire file — frontmatter and body.
