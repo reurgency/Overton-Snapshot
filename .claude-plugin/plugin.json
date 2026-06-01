@@ -1,0 +1,11 @@
+{
+  "name": "overton-snapshot",
+  "version": "0.1.0",
+  "description": "Scenario-aware context snapshots for zero-context agent handoffs, plus a context-usage statusline and an over-threshold nudge.",
+  "author": { "name": "reUrgency" },
+  "homepage": "https://github.com/reUrgency/Overton-Snapshot",
+  "repository": "https://github.com/reUrgency/Overton-Snapshot",
+  "license": "MIT",
+  "keywords": ["context", "compaction", "handoff", "statusline", "snapshot", "claude-code"],
+  "hooks": "./hooks/hooks.json"
+}

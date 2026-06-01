@@ -1,0 +1,5 @@
+{
+  "threshold_pct": 75,
+  "context_window": "auto",
+  "_comment": "threshold_pct = when the context indicator turns red and the Stop hook nudges you to run /overton-snapshot. context_window = 'auto' (recommended) detects 200k vs 1M from the CLAUDE_CODE_DISABLE_1M_CONTEXT env toggle and self-corrects if usage exceeds the assumed window; set an explicit integer (e.g. 200000 or 1000000) to force it. Env overrides: OVERTON_THRESHOLD_PCT, OVERTON_CONTEXT_WINDOW."
+}
