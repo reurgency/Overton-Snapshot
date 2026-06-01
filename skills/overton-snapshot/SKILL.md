@@ -1,6 +1,7 @@
 ---
-name: Overton Snapshot
+name: overton-snapshot
 description: Capture an "Overton Context Window" snapshot — a scenario-aware, structured summary of the current session that a fresh agent with zero prior context can read and immediately resume from. Use when context is filling up, before a handoff, or any time you want a durable, searchable checkpoint of where things stand.
+argument-hint: "[1-9 template | blank=auto] [--here to save into this repo for a committed handoff] [focus instructions] — 1=coding 2=planning 3=debugging 4=research 5=strategy 6=meeting 7=creative 8=multimedia 9=general"
 status: active
 embedMode: link
 ---
