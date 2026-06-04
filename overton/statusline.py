@@ -28,7 +28,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from usage import compute  # noqa: E402
+from usage import compute, _config  # noqa: E402
 
 DIM = "\033[2m"; CYAN = "\033[36m"; GREEN = "\033[32m"
 YELLOW = "\033[33m"; RED = "\033[31m"; RESET = "\033[0m"
@@ -61,6 +61,28 @@ def _git(cwd, *args):
         return ""
 
 
+def _context(payload):
+    """Context usage, preferring Claude Code's own live number so the meter always
+    matches CC's native readout. Newer CC ships a `context_window` block in the
+    statusLine payload (used_percentage + context_window_size); we read it directly.
+    Older CC lacks it, so we fall back to deriving usage from the transcript (usage.py).
+    """
+    thr = _config()["threshold_pct"]
+    cw = payload.get("context_window")
+    if isinstance(cw, dict) and cw.get("used_percentage") is not None \
+            and cw.get("context_window_size"):
+        used = cw.get("total_input_tokens")
+        if used is None:
+            cu = cw.get("current_usage") or {}
+            used = (cu.get("input_tokens", 0)
+                    + cu.get("cache_creation_input_tokens", 0)
+                    + cu.get("cache_read_input_tokens", 0))
+        return {"ok": True, "pct": round(cw["used_percentage"]), "used": used,
+                "window": cw["context_window_size"], "threshold_pct": thr,
+                "estimated": False}
+    return compute(payload.get("transcript_path"))
+
+
 def main():
     try:
         payload = json.load(sys.stdin)
@@ -89,7 +111,6 @@ def main():
     cwd = (payload.get("cwd")
            or (payload.get("workspace") or {}).get("current_dir")
            or os.getcwd())
-    transcript = payload.get("transcript_path")
     ws = payload.get("workspace") or {}
 
     model = ((payload.get("model") or {}).get("display_name")
@@ -104,7 +125,7 @@ def main():
     model_text = f"{model}/{effort}" if effort else model
     line1 = [seg("✨", f"{DIM}{model_text}{RESET}")]
 
-    info = compute(transcript)
+    info = _context(payload)
     if info.get("ok"):
         pct, used = info["pct"], info["used"]
         window, thr = info["window"], info["threshold_pct"]
