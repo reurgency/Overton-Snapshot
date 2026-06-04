@@ -20,9 +20,10 @@ You should always be in charge of the timing and shape of your context window co
 |-----------|--------------|
 | `/overton-snapshot` skill | Generates a snapshot using one of 9 scenario templates (coding, planning, debugging, research, strategy, meeting, creative, multimedia, general). Saved as Markdown + YAML frontmatter to `~/.claude/snapshots/`, or into the repo with `--here`. |
 | `/overton-resume [path\|substring\|latest]` command | With no arg, **lists** snapshots (from `.claude/handoffs/` → `docs/handoffs/` → `~/.claude/snapshots/`) to choose from — unless there's only one. Or load directly by path, filename substring, or `latest`. Restates state + next step, then continues. Convenience only — consuming a snapshot needs no plugin. |
-| `overton/statusline.py` | Statusline showing model · git branch · `ctx NN% ▓▓░ used/window`. Mirrors Claude Code's `/context` (auto-detects 200k vs 1M). Turns red + shows `⚠ /overton-snapshot` over your threshold. |
+| `overton/statusline.py` | A condensed **two-line** statusline. Line 1: `✨ model/effort · 🎯 ctx% ▓▓░ used/window · 💰 cost · ⏱️ 5h rate% · ⏳ resets`. Line 2: `📁 dir · branch ~changes · worktree`. Context mirrors Claude Code's `/context` (auto-detects 200k vs 1M): green, yellow approaching your threshold, red at/above it, and appends `[⏰ run /overton-snapshot]` once over threshold. |
+| `/overton-statusline [on\|off\|toggle]` command | Turn the emoji icons on or off — `off` drops every emoji and separates segments with plain ` \| ` bars. No arg prints the current state. |
 | `overton/threshold-nudge.py` (Stop hook) | One nudge per rising 10% band per session once you cross the threshold. |
-| `overton/config.json` | `threshold_pct` (default 75) and `context_window` (`"auto"`). |
+| `overton/config.json` | `threshold_pct` (default 75), `context_window` (`"auto"`), and `statusline.emoji` (`true`/`false`, managed by `/overton-statusline`). |
 
 <img src="images/status-line-12pct.png" alt="Statusline Meter" width="480">
 <img src="images/status-line-50pct.png" alt="Statusline Meter" width="480">
@@ -119,8 +120,9 @@ silently start changing things.
 
 Edit `overton/config.json` (or set env vars `OVERTON_THRESHOLD_PCT`, `OVERTON_CONTEXT_WINDOW`):
 
-- **`threshold_pct`** — when the indicator turns red and the nudge fires (default `75`).
+- **`threshold_pct`** — when the context bar turns red and the nudge fires (default `75`; yellow starts at 80% of it).
 - **`context_window`** — `"auto"` detects 200k vs 1M from `CLAUDE_CODE_DISABLE_1M_CONTEXT`; or force an integer.
+- **`statusline.emoji`** — `true` for emoji icons, `false` for plain ` | ` separators. Toggle with `/overton-statusline on|off`. The rate-limit segment only renders on Pro/Max sessions once the data is available.
 
 ---
 

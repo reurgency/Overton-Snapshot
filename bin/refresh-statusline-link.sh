@@ -13,5 +13,12 @@
 STABLE="$HOME/.claude/overton-statusline.py"
 TARGET="${CLAUDE_PLUGIN_ROOT}/overton/statusline.py"
 
-[ -n "$CLAUDE_PLUGIN_ROOT" ] && ln -sfn "$TARGET" "$STABLE"
+# Stable launcher for the /overton-statusline config CLI (same survives-updates trick).
+STABLE_CFG="$HOME/.claude/overton-statusline-config.py"
+TARGET_CFG="${CLAUDE_PLUGIN_ROOT}/overton/statusline_config.py"
+
+if [ -n "$CLAUDE_PLUGIN_ROOT" ]; then
+  ln -sfn "$TARGET" "$STABLE"
+  ln -sfn "$TARGET_CFG" "$STABLE_CFG"
+fi
 exit 0

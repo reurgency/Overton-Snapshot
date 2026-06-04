@@ -21,8 +21,11 @@ link () {  # link <target-in-repo> <path-in-~/.claude>
 }
 
 link "$REPO/overton"                  "$CLAUDE/overton"
-link "$REPO/commands/overton-snapshot.md" "$CLAUDE/commands/overton-snapshot.md"
+link "$REPO/commands/overton-resume.md"     "$CLAUDE/commands/overton-resume.md"
+link "$REPO/commands/overton-statusline.md" "$CLAUDE/commands/overton-statusline.md"
 link "$REPO/skills/overton-snapshot"  "$CLAUDE/skills/overton-snapshot"
-ln -sfn "$REPO/overton/statusline.py" "$CLAUDE/overton-statusline.py"
+ln -sfn "$REPO/overton/statusline.py"        "$CLAUDE/overton-statusline.py"
+ln -sfn "$REPO/overton/statusline_config.py" "$CLAUDE/overton-statusline-config.py"
 echo "stable statusline link: $CLAUDE/overton-statusline.py -> $REPO/overton/statusline.py"
+echo "stable config link:     $CLAUDE/overton-statusline-config.py -> $REPO/overton/statusline_config.py"
 echo "Done. (settings.json may point at \$HOME/.claude/overton/statusline.py or \$HOME/.claude/overton-statusline.py)"
