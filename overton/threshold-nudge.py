@@ -53,9 +53,8 @@ def main():
         pass
 
     _emit({"systemMessage": (
-        f"⚠ Context at {pct}% "
-        f"({round(info['used']/1000)}k of the {round(info['window']/1000)}k window, "
-        f"threshold {thr}%). Consider running /overton-snapshot to checkpoint "
+        f"⚠ Context at {pct}% of the {round(info['window']/1000)}k window "
+        f"(threshold {thr}%). Consider running /overton-snapshot to checkpoint "
         f"this session before auto-compaction.")})
 
 

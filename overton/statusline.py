@@ -14,11 +14,11 @@ emojis and " | " separators throughout:
   dir | branch ~changes | worktree
 
 The context percent mirrors Claude Code's own "% context used" footer — tokens
-incl. output over the usable window (raw minus CC's 20k output reserve) — while
-the token readout shows raw tokens against the raw window (e.g. "80% … 144k/200k"),
-the same split CC makes between its footer percent and /context counts. The
-bar/percent is green, turns yellow approaching the threshold, red at/above it, and
-appends the "[⏰ run /overton-snapshot]" nudge once over threshold. The rate-limit segment only renders
+incl. output over the usable window (raw minus CC's 20k output reserve). The token
+readout is the same measurement expressed in tokens of the raw window (effective
+tokens), so percent, bar, and fraction always agree: 86% reads as "86% ▓… 172k/200k".
+The bar/percent is green, turns yellow approaching the threshold, red at/above it,
+and appends the "[⏰ run /overton-snapshot]" nudge once over threshold. The rate-limit segment only renders
 for Pro/Max sessions once the data is present in the payload.
 
 Separator rule (emoji mode): segments led by an emoji are divided by two spaces (the
@@ -73,9 +73,9 @@ def _context(payload):
     `context_window.used_percentage` does NOT match the footer (it omits output
     tokens and divides by the raw window, reading ~9 points low near the limit),
     so we derive the footer's number from the payload's token counts instead.
-    The returned `window` stays RAW for the token readout (144k/200k), matching
-    CC's own split between footer percent and /context counts. Older CC lacks
-    the block; fall back to the transcript (usage.py, same math).
+    The returned `used` is the EFFECTIVE token count (rescaled by window/usable)
+    over the raw `window`, so the displayed fraction always equals the percent.
+    Older CC lacks the block; fall back to the transcript (usage.py, same math).
     """
     thr = _config()["threshold_pct"]
     cw = payload.get("context_window")
@@ -92,7 +92,10 @@ def _context(payload):
                     + cu.get("output_tokens", 0))
         window = cw["context_window_size"]
         usable = max(1, window - OUTPUT_RESERVE)
-        pct = max(0, min(100, round(100 * used / usable)))
+        # Effective tokens (rescaled by window/usable) so used/window == pct,
+        # capped at the window the way CC caps its footer at 100%.
+        used = min(round(used * window / usable), window)
+        pct = max(0, min(100, round(100 * used / window)))
         return {"ok": True, "pct": pct, "used": used, "window": window,
                 "threshold_pct": thr, "estimated": False}
     return compute(payload.get("transcript_path"))
