@@ -7,7 +7,7 @@
       "name": "overton-snapshot",
       "source": "./",
       "description": "Scenario-aware context snapshots for zero-context agent handoffs, plus a context-usage statusline and an over-threshold nudge.",
-      "version": "0.1.0"
+      "version": "0.2.0"
     }
   ]
 }
