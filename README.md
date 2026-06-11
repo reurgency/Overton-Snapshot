@@ -51,8 +51,30 @@ Plugins can't register a status line directly, so add this once to `~/.claude/se
 }
 ```
 
-The plugin's `SessionStart` hook keeps `~/.claude/overton-statusline.py` pointed at the current plugin
-version automatically, so this survives updates.
+**On Windows**, use `python` instead of `python3` (Windows Python installs rarely provide a
+`python3` command — typing it usually hits the Microsoft Store stub) and keep forward slashes:
+
+```json
+"statusLine": {
+  "type": "command",
+  "command": "python ~/.claude/overton-statusline.py"
+}
+```
+
+`~/.claude/overton-statusline.py` is a small launcher the plugin's `SessionStart` hook copies into
+place on every session start. It locates the currently-installed plugin version at run time, so the
+setting survives plugin updates. The hook needs a POSIX `sh` — macOS, Linux, or Git Bash on Windows
+(the usual Claude Code setup). On Windows **without** Git Bash, copy the launcher once by hand
+(it self-locates the plugin, so one copy keeps working across updates):
+
+```powershell
+Copy-Item (Get-ChildItem "$env:USERPROFILE/.claude/plugins/cache/*/overton-snapshot/*/bin/overton-statusline-launcher.py")[0] "$env:USERPROFILE/.claude/overton-statusline.py"
+```
+
+**If the status line stays blank**, Claude Code hides command failures — run `claude --debug`, which
+logs the status line command's exit code and stderr on first render. The usual causes, in order:
+`python3` doesn't exist on Windows (use `python`), the launcher was never created (no Git Bash — run
+the copy above), or Python itself isn't installed.
 
 ---
 

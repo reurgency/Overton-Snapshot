@@ -24,8 +24,12 @@ link "$REPO/overton"                  "$CLAUDE/overton"
 link "$REPO/commands/overton-resume.md"     "$CLAUDE/commands/overton-resume.md"
 link "$REPO/commands/overton-statusline.md" "$CLAUDE/commands/overton-statusline.md"
 link "$REPO/skills/overton-snapshot"  "$CLAUDE/skills/overton-snapshot"
-ln -sfn "$REPO/overton/statusline.py"        "$CLAUDE/overton-statusline.py"
-ln -sfn "$REPO/overton/statusline_config.py" "$CLAUDE/overton-statusline-config.py"
-echo "stable statusline link: $CLAUDE/overton-statusline.py -> $REPO/overton/statusline.py"
-echo "stable config link:     $CLAUDE/overton-statusline-config.py -> $REPO/overton/statusline_config.py"
+# Stable launchers: COPIES of the runtime-resolving launcher, same as the
+# SessionStart hook installs on real plugin setups (rm first — cp onto a
+# leftover symlink from older versions would write through it into repo files).
+rm -f "$CLAUDE/overton-statusline.py" "$CLAUDE/overton-statusline-config.py"
+cp "$REPO/bin/overton-statusline-launcher.py" "$CLAUDE/overton-statusline.py"
+cp "$REPO/bin/overton-statusline-launcher.py" "$CLAUDE/overton-statusline-config.py"
+echo "stable statusline launcher: $CLAUDE/overton-statusline.py (resolves \$HOME/.claude/overton, then the installed plugin)"
+echo "stable config launcher:     $CLAUDE/overton-statusline-config.py"
 echo "Done. (settings.json may point at \$HOME/.claude/overton/statusline.py or \$HOME/.claude/overton-statusline.py)"
