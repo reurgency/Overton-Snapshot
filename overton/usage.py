@@ -175,13 +175,16 @@ def compute(transcript_path):
     """Return a dict describing current context usage.
 
     Keys: ok (bool), window, threshold_pct, and when ok: used, pct, estimated.
-    `window` is the USABLE window (raw minus OUTPUT_RESERVE) so pct matches CC's
-    "% context used" footer. `estimated` is True when no token usage exists yet
-    (pre-first-turn / fresh resume) and the figure is derived from transcript
-    content instead.
+    `used`/`window` are RAW (actual tokens, actual window size — e.g. 144k/200k);
+    `pct` divides by the usable window (raw minus OUTPUT_RESERVE) so it matches
+    CC's "% context used" footer — same split CC itself shows between the footer
+    percent and /context token counts. `estimated` is True when no token usage
+    exists yet (pre-first-turn / fresh resume) and the figure is derived from
+    transcript content instead.
     """
     cfg = _config()
-    window = max(1, _window(cfg) - OUTPUT_RESERVE)
+    window = _window(cfg)
+    usable = max(1, window - OUTPUT_RESERVE)
     usage = _last_usage(transcript_path) if transcript_path else None
     if usage:
         used, estimated = _tokens(usage), False
@@ -193,5 +196,5 @@ def compute(transcript_path):
     else:
         return {"ok": False, "window": window, "threshold_pct": cfg["threshold_pct"]}
     return {"ok": True, "used": used, "window": window,
-            "pct": round(100 * used / window),
+            "pct": round(100 * used / usable),
             "threshold_pct": cfg["threshold_pct"], "estimated": estimated}
