@@ -4,10 +4,18 @@ Estimates how full the current Claude Code context window is by reading the last
 assistant turn's token usage from the session transcript (.jsonl). Used by both
 statusline.py (visual indicator) and threshold-nudge.py (Stop hook nudge).
 
-Claude Code does not expose context size to statusline/hooks directly, so we derive
-it from the transcript, where each assistant message carries a `usage` block:
-    input_tokens + cache_creation_input_tokens + cache_read_input_tokens  = prompt sent
-    + output_tokens                                                       = becomes next turn's input
+The numbers here deliberately mirror Claude Code's own "% context used" footer,
+which computes (verified against CC 2.1.170's source):
+
+    used   = input_tokens + cache_creation_input_tokens
+             + cache_read_input_tokens + output_tokens     (last assistant message)
+    window = context_window_size - min(max_output_tokens, 20_000)
+    pct    = round(100 * used / window)                    (footer clamps to 0-100)
+
+Two things people get wrong (we did too): CC counts the response's output_tokens
+as occupying the window (they re-enter as input next turn), and it divides by the
+window MINUS a reserved output allowance — 20k for every current model — not the
+raw 200k. Both omissions together read ~9 points low near the limit.
 """
 import json
 import os
@@ -43,10 +51,16 @@ def _config():
     return cfg
 
 
+# Claude Code reserves room for the model's output when judging fullness: its
+# footer divides by (window - min(max_output_tokens, 20k)). max_output_tokens is
+# >= 32k for every current model, so the reserve is effectively a 20k constant.
+OUTPUT_RESERVE = 20_000
+
+
 def _window(cfg):
-    """Resolve the context window to use as the denominator — matching Claude Code's
-    own `/context` gauge. Explicit config/env override wins; otherwise detect from the
-    same 1M-context env toggle CC uses: disabled -> 200k target, enabled -> 1M.
+    """Resolve the RAW context window. Explicit config/env override wins; otherwise
+    detect from the same 1M-context env toggle CC uses: disabled -> 200k, enabled
+    -> 1M. compute() subtracts OUTPUT_RESERVE to get the usable denominator.
 
     We deliberately do NOT clamp usage to <=100%: CC reports >100% (e.g. 178%) when a
     session is over its target window, and that over-target signal is exactly what
@@ -88,16 +102,14 @@ def _last_usage(transcript_path, tail_bytes=2_000_000):
 def _tokens(usage):
     """Tokens currently occupying the context window for this turn.
 
-    A single assistant turn may contain several inference iterations (tool-use
-    loops, thinking). Claude Code SUMS them into the top-level usage, which
-    re-counts the shared cached prefix once per iteration and overstates context.
-    The last iteration reflects the true current window occupancy, so prefer it.
+    Matches Claude Code's own count: the message's TOP-LEVEL usage (CC reads it
+    directly, not iterations[-1]), INCLUDING output_tokens — the response just
+    generated re-enters the window as input on the next turn, and CC counts it.
     """
-    its = usage.get("iterations")
-    src = its[-1] if isinstance(its, list) and its else usage
-    return (src.get("input_tokens", 0)
-            + src.get("cache_creation_input_tokens", 0)
-            + src.get("cache_read_input_tokens", 0))
+    return (usage.get("input_tokens", 0)
+            + usage.get("cache_creation_input_tokens", 0)
+            + usage.get("cache_read_input_tokens", 0)
+            + usage.get("output_tokens", 0))
 
 
 # Approx fixed context loaded before any conversation messages: system prompt +
@@ -163,11 +175,17 @@ def compute(transcript_path):
     """Return a dict describing current context usage.
 
     Keys: ok (bool), window, threshold_pct, and when ok: used, pct, estimated.
-    `estimated` is True when no token usage exists yet (pre-first-turn / fresh
-    resume) and the figure is derived from transcript content instead.
+    `pct` matches CC's "% context used" footer, which divides by the usable
+    window (raw minus OUTPUT_RESERVE). `window` is the raw window size, and
+    `used` is the EFFECTIVE token count — actual tokens rescaled by
+    window/usable — so used/window always equals pct: one story, not three
+    (86% reads as ~172k/200k, never 86% next to 155k/200k). `estimated` is True
+    when no token usage exists yet (pre-first-turn / fresh resume) and the
+    figure is derived from transcript content instead.
     """
     cfg = _config()
     window = _window(cfg)
+    usable = max(1, window - OUTPUT_RESERVE)
     usage = _last_usage(transcript_path) if transcript_path else None
     if usage:
         used, estimated = _tokens(usage), False
@@ -178,6 +196,7 @@ def compute(transcript_path):
         estimated = True
     else:
         return {"ok": False, "window": window, "threshold_pct": cfg["threshold_pct"]}
+    used = round(used * window / usable)  # effective tokens: used/window == pct
     return {"ok": True, "used": used, "window": window,
             "pct": round(100 * used / window),
             "threshold_pct": cfg["threshold_pct"], "estimated": estimated}
