@@ -39,6 +39,19 @@ You should always be in charge of the timing and shape of your context window co
 /plugin install overton-snapshot@cc-plugins-by-reurgency
 ```
 
+### Updating
+
+Reinstalling over an existing install fails with "already installed" — update instead:
+
+```bash
+claude plugin marketplace update          # refresh the marketplace metadata first
+claude plugin update overton-snapshot     # then pull the new plugin version
+```
+
+Then **restart Claude Code** — the update only applies on restart (which also re-runs the
+`SessionStart` hook that refreshes the status line launcher). Alternatively, the `/plugin` UI
+inside a session has an update option, and `claude plugin list` shows the installed version.
+
 ### Status line (one-time settings step)
 
 **IMPORTANT:** Only if you want the status line to appear in your Claude interface. 
