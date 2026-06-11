@@ -13,10 +13,12 @@ emojis and " | " separators throughout:
   model/effort | ctx% bar used/window [⏰ run /overton-snapshot] | cost | 5h rate% @ resets
   dir | branch ~changes | worktree
 
-Context usage is derived from the transcript (see usage.py): the bar/percent is green,
-turns yellow approaching the threshold, red at/above it, and appends the
-"[⏰ run /overton-snapshot]" nudge once over threshold. The rate-limit segment only
-renders for Pro/Max sessions once the data is present in the payload.
+Context usage mirrors Claude Code's own "% context used" footer (see _context):
+tokens incl. output over the usable window (raw minus CC's 20k output reserve), so
+"157k/180k" means 157k of 180k usable. The bar/percent is green, turns yellow
+approaching the threshold, red at/above it, and appends the "[⏰ run
+/overton-snapshot]" nudge once over threshold. The rate-limit segment only renders
+for Pro/Max sessions once the data is present in the payload.
 
 Separator rule (emoji mode): segments led by an emoji are divided by two spaces (the
 emoji is the visual divider); segments with no emoji (branch, worktree) use " | ".
@@ -28,7 +30,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from usage import compute, _config  # noqa: E402
+from usage import compute, _config, OUTPUT_RESERVE  # noqa: E402
 
 DIM = "\033[2m"; CYAN = "\033[36m"; GREEN = "\033[32m"
 YELLOW = "\033[33m"; RED = "\033[31m"; RESET = "\033[0m"
@@ -62,24 +64,33 @@ def _git(cwd, *args):
 
 
 def _context(payload):
-    """Context usage, preferring Claude Code's own live number so the meter always
-    matches CC's native readout. Newer CC ships a `context_window` block in the
-    statusLine payload (used_percentage + context_window_size); we read it directly.
-    Older CC lacks it, so we fall back to deriving usage from the transcript (usage.py).
+    """Context usage matching Claude Code's native "% context used" footer.
+
+    The footer divides (input + cache + OUTPUT tokens) by the USABLE window — the
+    raw window minus a reserved output allowance (min(max_output_tokens, 20k), so
+    20k for every current model) — and clamps to 0-100. The payload's pre-computed
+    `context_window.used_percentage` does NOT match the footer (it omits output
+    tokens and divides by the raw window, reading ~9 points low near the limit),
+    so we derive the footer's number from the payload's token counts instead.
+    Older CC lacks the block; fall back to the transcript (usage.py, same math).
     """
     thr = _config()["threshold_pct"]
     cw = payload.get("context_window")
     if isinstance(cw, dict) and cw.get("used_percentage") is not None \
             and cw.get("context_window_size"):
         used = cw.get("total_input_tokens")
-        if used is None:
+        if used is not None:
+            used += cw.get("total_output_tokens") or 0
+        else:
             cu = cw.get("current_usage") or {}
             used = (cu.get("input_tokens", 0)
                     + cu.get("cache_creation_input_tokens", 0)
-                    + cu.get("cache_read_input_tokens", 0))
-        return {"ok": True, "pct": round(cw["used_percentage"]), "used": used,
-                "window": cw["context_window_size"], "threshold_pct": thr,
-                "estimated": False}
+                    + cu.get("cache_read_input_tokens", 0)
+                    + cu.get("output_tokens", 0))
+        window = max(1, cw["context_window_size"] - OUTPUT_RESERVE)
+        pct = max(0, min(100, round(100 * used / window)))
+        return {"ok": True, "pct": pct, "used": used, "window": window,
+                "threshold_pct": thr, "estimated": False}
     return compute(payload.get("transcript_path"))
 
 

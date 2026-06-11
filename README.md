@@ -20,7 +20,7 @@ You should always be in charge of the timing and shape of your context window co
 |-----------|--------------|
 | `/overton-snapshot` skill | Generates a snapshot using one of 9 scenario templates (coding, planning, debugging, research, strategy, meeting, creative, multimedia, general). Saved as Markdown + YAML frontmatter to `~/.claude/snapshots/`, or into the repo with `--here`. |
 | `/overton-resume [path\|substring\|latest]` command | With no arg, **lists** snapshots (from `.claude/handoffs/` → `docs/handoffs/` → `~/.claude/snapshots/`) to choose from — unless there's only one. Or load directly by path, filename substring, or `latest`. Restates state + next step, then continues. Convenience only — consuming a snapshot needs no plugin. |
-| `overton/statusline.py` | A condensed **two-line** statusline. Line 1: `✨ model/effort · 🎯 ctx% ▓▓░ used/window · 💰 cost · ⏱️ 5h rate% · ⏳ resets`. Line 2: `📁 dir · branch ~changes · worktree`. Context mirrors Claude Code's `/context` (auto-detects 200k vs 1M): green, yellow approaching your threshold, red at/above it, and appends `[⏰ run /overton-snapshot]` once over threshold. |
+| `overton/statusline.py` | A condensed **two-line** statusline. Line 1: `✨ model/effort · 🎯 ctx% ▓▓░ used/window · 💰 cost · ⏱️ 5h rate% · ⏳ resets`. Line 2: `📁 dir · branch ~changes · worktree`. Context mirrors Claude Code's native `% context used` readout (tokens incl. output over the usable window — see [how it's computed](#how-context-usage-is-computed)): green, yellow approaching your threshold, red at/above it, and appends `[⏰ run /overton-snapshot]` once over threshold. |
 | `/overton-statusline [on\|off\|toggle]` command | Turn the emoji icons on or off — `off` drops every emoji and separates segments with plain ` \| ` bars. No arg prints the current state. |
 | `overton/threshold-nudge.py` (Stop hook) | One nudge per rising 10% band per session once you cross the threshold. |
 | `overton/config.json` | `threshold_pct` (default 75), `context_window` (`"auto"`), and `statusline.emoji` (`true`/`false`, managed by `/overton-statusline`). |
@@ -185,11 +185,23 @@ continue?"* — and spends the limited token budget optimizing for that answer.
 
 ## How context usage is computed
 
-Claude Code doesn't expose context size to status lines/hooks, so it's derived from the session
-transcript (`.jsonl`): the **last assistant turn's** token usage (`input + cache_creation + cache_read`),
-using the **last `iterations[]` entry** to avoid double-counting multi-pass turns. The window divisor
-matches Claude Code's own `/context` gauge (200k target when `CLAUDE_CODE_DISABLE_1M_CONTEXT` is set,
-else 1M), and values over 100% are shown deliberately — they mean you're over your target window.
+The percentage mirrors Claude Code's own **"% context used"** footer (verified against CC 2.1.170's
+source), which is *not* the naive `tokens / 200k` ratio — and not even the `used_percentage` CC itself
+ships in the statusLine payload. The footer computes:
+
+```
+used   = input + cache_creation + cache_read + output     (last assistant message)
+window = context window − min(max output tokens, 20k)     (200k − 20k = 180k usable)
+pct    = used / window                                    (clamped to 0–100)
+```
+
+Two subtleties: the response's **output tokens count** (they re-enter the window as input next turn),
+and CC divides by the **usable** window — raw size minus a ~20k reserved output allowance. Skip both
+and you read ~9 points low near the limit. On newer CC the numbers come straight from the statusLine
+payload's `context_window` token counts; on older CC they're derived identically from the session
+transcript (`.jsonl`). The raw window auto-detects 200k vs 1M (`CLAUDE_CODE_DISABLE_1M_CONTEXT`), and
+in the transcript fallback values over 100% are shown deliberately — they mean you're over your target
+window (CC's footer pegs at 100%).
 
 Before the first turn writes any usage (a brand-new session, or right after a `/resume`), the figure is
 **estimated** from transcript content — system/tools baseline plus the messages that will replay (from the
